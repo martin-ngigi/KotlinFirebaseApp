@@ -1,10 +1,15 @@
 package com.example.kotlinfirebaseapp
 
+import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
@@ -12,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+
+const val REQUEST_CODE_SIGN_IN=0
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,6 +47,72 @@ class MainActivity : AppCompatActivity() {
             updateProfile()
         }
 
+        btnGoogleSignIn.setOnClickListener{
+            googleSignIn()
+        }
+
+        btnLogOut.setOnClickListener{
+            logOut()
+        }
+
+    }
+
+    private fun logOut() {
+        firebaseAuth.signOut()
+        Toast.makeText(this@MainActivity, "Successfully logged out.", Toast.LENGTH_SHORT).show()
+
+
+    }
+
+    private fun googleSignIn() {
+        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.web_client_id))
+            .requestEmail()
+            .build()
+
+        val signInClient = GoogleSignIn.getClient(this, options)
+
+        /**
+         * show popup
+         */
+        signInClient.signInIntent.also {
+            startActivityForResult(it, REQUEST_CODE_SIGN_IN)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == REQUEST_CODE_SIGN_IN){
+            val account = GoogleSignIn.getSignedInAccountFromIntent(data).result
+            account?.let {
+                googleAuthForFirebase(it)
+            }
+        }
+    }
+
+    private fun googleAuthForFirebase(account: GoogleSignInAccount) {
+        val credentials = GoogleAuthProvider.getCredential(account.idToken, null)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                firebaseAuth.signInWithCredential(credentials).await()
+                withContext(Dispatchers.Main){
+                    Toast.makeText(this@MainActivity, "Successfully logged in.\nEmail: ${account.email.toString()}", Toast.LENGTH_SHORT).show()
+
+                    /**
+                     * set data to ui
+                     */
+                    tvLoggedIn.text = "You are logged in "
+                    etUsername.setText(account.displayName)
+                    ivProfilePicture.setImageURI(account.photoUrl)
+                }
+            }
+            catch (e: Exception){
+                withContext(Dispatchers.Main){
+                    Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
 
     }
 

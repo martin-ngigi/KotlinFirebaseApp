@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Kotlin Firebase App</string>
+    <!--To get the client id
+    on top right, instead df "android", select project,
+    then click google-services.json,
+    then copy client id
+    -->
+    <string name="web_client_id">241597468699-4hf63raq662649n4g2ascd3mkkubruvk.apps.googleusercontent.com</string>
 </resources>
